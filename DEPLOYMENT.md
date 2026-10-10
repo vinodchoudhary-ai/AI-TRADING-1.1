@@ -48,7 +48,9 @@ JOB_INTERVAL_MIN=10
 DATABASE_FILE=/var/lib/aurum/aurum.db
 ```
 
-**Rotate your key first.** The key used while building this was pasted into a chat. Create a new one on twelvedata.com and put only the new one on the server.
+**Key rotation (done for the development key, 2026-10-10).** The key used while building this was pasted into a chat, so it was replaced: Twelve Data now accepts the new key and rejects the old one (checked directly against their API), and the old key never appeared in git history. Keys live only in `.env.local`, which is git-ignored.
+
+For the production server, use a **separate key**, not the development one. Create it on twelvedata.com, put it only in the server's environment, and if a key is ever pasted somewhere it shouldn't be, rotate it the same way: create a new key, delete the old one, then confirm the old one is rejected.
 
 ## 4. Build and run
 
