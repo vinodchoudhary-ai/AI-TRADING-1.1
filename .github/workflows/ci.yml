@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only: this workflow only checks the code. It never needs to write to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # what the app is built and tested with (needs node:sqlite)
+          cache: npm
+
+      - run: npm ci
+
+      # Typecheck, lint and the 170 unit tests (no network or API keys needed).
+      - run: npm run check
+
+      # Production build. The build fetches the Geist font from Google, so it needs internet.
+      - run: npm run build
+
+      # Fail on serious problems in what actually ships. Dev-tooling findings are known and documented
+      # (DEPLOYMENT.md section 10, item 6), so only production dependencies are audited.
+      - run: npm audit --omit=dev --audit-level=high
