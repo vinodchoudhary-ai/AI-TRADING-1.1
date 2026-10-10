@@ -1,0 +1,15 @@
+# Untested starting point. Put your secrets in .env (not committed); see .env.example for the names.
+services:
+  aurum:
+    build:
+      context: .
+      args:
+        APP_URL: ${APP_URL:-}
+    env_file: .env
+    ports:
+      - "127.0.0.1:3000:3000"   # bind to localhost; put a reverse proxy with HTTPS in front
+    volumes:
+      - aurum-data:/app/data
+    restart: unless-stopped
+volumes:
+  aurum-data:
