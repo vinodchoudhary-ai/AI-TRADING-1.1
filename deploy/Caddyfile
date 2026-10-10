@@ -1,0 +1,7 @@
+# Reverse proxy with automatic HTTPS (Caddy). Replace the domain. Caddy passes Host and sets
+# X-Forwarded-For / X-Forwarded-Proto itself, which the app's origin check and rate limits rely on.
+# Keep port 3000 closed to the internet: only Caddy (80/443) should be reachable.
+yourdomain.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}

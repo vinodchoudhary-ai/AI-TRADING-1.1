@@ -2,7 +2,7 @@
 
 Aurum Desk is a Next.js app that shows XAU/USD and BTC/USD charts, indicator overlays and rule-based strategies that are backtested on the loaded history. A background job records each strategy's live setups in a SQLite file and later scores them against what price actually did (a forward test). It never places trades.
 
-**What I verified (Node 24.20, Windows):** `npm run check` (typecheck, lint, 170 unit tests) passes; `npm run build` succeeds; the **production server** (`next start`) passes `npm run smoke` with the account flow (34 checks: every page, robots/sitemap/manifest, security headers, CSRF guard, sign-up, change password, sign-out-everywhere, delete); the tracker ran against live gold and BTC data (5 of 5 targets, recording real setups); an automated accessibility scan (axe) found **0 violations** on all 12 pages in dark and light themes, plus the sign-up form, the search dialog and the signed-in Account page. **What I did not verify:** Docker (not installed here), any Linux host, the reverse proxy, systemd or the backup commands below, sending through a real email provider, and anything on a phone or browser other than the one built into the desktop app. Treat those as a starting point and test them on a staging machine before relying on them.
+**What I verified (Node 24.20, Windows):** `npm run check` (typecheck, lint, 198 unit tests) passes; `npm run build` succeeds; the **production server** (`next start`) passes `npm run smoke` with the account flow (34 checks: every page, robots/sitemap/manifest, security headers, CSRF guard, sign-up, change password, sign-out-everywhere, delete); the tracker ran against live gold and BTC data (5 of 5 targets, recording real setups); an automated accessibility scan (axe) found **0 violations** on all 12 pages in dark and light themes, plus the sign-up form, the search dialog and the signed-in Account page. **What I did not verify:** Docker (not installed here), any Linux host, the reverse proxy, systemd or the backup commands below, sending through a real email provider, and anything on a phone or browser other than the one built into the desktop app. Treat those as a starting point and test them on a staging machine before relying on them.
 
 ## 1. The one constraint that decides where you can host
 
@@ -36,6 +36,7 @@ Create a file named `.env.local` next to `package.json` on the server. It is git
 | `JOB_INTERVAL_MIN` | No | `10` | Minutes between tracker runs (minimum 1). |
 | `DATABASE_FILE` | No | `data/aurum.db` | Path to the SQLite file. Point it at your persistent disk. |
 | `PORT` | No | `3000` | Port the server listens on. |
+| `NEXT_PUBLIC_SITE_OPERATOR`, `NEXT_PUBLIC_SITE_CONTACT_EMAIL`, `NEXT_PUBLIC_SITE_JURISDICTION` | **Yes before launch** | placeholders | Who operates the site. Shown on the public Privacy and Terms pages, so they must be real facts about you. **Read at build time** (set them before `npm run build`, or as Docker build args). Until all three are set, those pages show a visible "draft" notice. Optional `NEXT_PUBLIC_SITE_BRAND` renames the product. |
 | `APP_URL` | **Yes in production** (for email) | none | Public address of the site, e.g. `https://yourdomain.com`. Used for the links in verification and reset emails. Without it, emails are not sent in production (section 14). |
 | `SMTP_URL` | For email | none | Mail server, e.g. `smtps://user:password@smtp.example.com:465`. |
 | `MAIL_FROM` | For email | none | Sender shown on emails, e.g. `Aurum Desk <noreply@yourdomain.com>`. |
@@ -100,13 +101,15 @@ Open only ports 80 and 443 in the firewall.
 
 ## 7. Backups
 
-The database is `data/aurum.db` (or your `DATABASE_FILE`), plus `-wal` and `-shm` files beside it while the app runs. Copying only the main file while the app is running can give an inconsistent backup. Either stop the app briefly, or use SQLite's own backup:
+The database is `data/aurum.db` (or your `DATABASE_FILE`), plus `-wal` and `-shm` files beside it while the app runs. Copying the main file by hand while the app is running can give an inconsistent backup, so use the included script, which uses SQLite's online backup and is safe while the app is running:
 
 ```bash
-sqlite3 /var/lib/aurum/aurum.db ".backup '/backups/aurum-$(date +%F).db'"
+node scripts/backup.mjs /var/backups/aurum --keep 14
 ```
 
-Back up daily and test a restore once. History is the only thing the app stores; everything else is rebuilt from the code.
+It writes one self-contained, dated `.db` file, **checks the copy is healthy before deleting any older one**, keeps the newest 14 (change with `--keep`), and never touches files that aren't its own backups. `deploy/aurum-backup.service` and `.timer` run it daily at 03:30 under systemd. **To restore:** stop the app, copy the chosen backup over the database file, start the app. Test a restore once on a spare machine.
+
+Backups contain emails and password hashes: encrypt them, restrict who can read them, and copy them off the server. The script was tested (nine tests, plus a run against the live development database, which came out with matching row counts and a passing integrity check). It does not encrypt or upload anything.
 
 ## 8. After deploying, check
 
@@ -157,11 +160,11 @@ These are real, and I have not fixed them.
 - [ ] `.env.local` on the server only, not in git
 - [ ] `npm run check` and `npm run build` pass on the server
 - [ ] `npm start` tested on the server (it passed on my Windows machine; repeat on the real host)
-- [ ] Tracker line appears in the log
+- [ ] The boot log shows `[preflight] configuration looks ready` (or only items you accept), then the tracker line; `/api/health` answers `ok`
 - [ ] HTTPS working, only ports 80 and 443 open
 - [ ] Daily backup scheduled and a restore tested
 - [ ] Quota and data-licence plan decided (section 10, items 1 and 2)
-- [ ] Placeholders in `src/config/site.ts` filled in (operator name, contact email, jurisdiction); the "Draft" banner on Privacy and Terms disappears when done
+- [ ] `NEXT_PUBLIC_SITE_OPERATOR`, `NEXT_PUBLIC_SITE_CONTACT_EMAIL` and `NEXT_PUBLIC_SITE_JURISDICTION` set before the build; the "Draft" banner on Privacy and Terms is gone
 - [ ] Risk, Privacy and Terms pages reviewed by a lawyer; Hindi text reviewed by a native speaker
 - [ ] HTTPS on, port 3000 not reachable from the internet, proxy passes `Host` and `X-Forwarded-*` (section 12)
 - [ ] `APP_URL`, `SMTP_URL` and `MAIL_FROM` set; a real verification email and a real reset email received and the links worked (section 14)
@@ -203,8 +206,8 @@ Email-and-password accounts are built in (no external service). Sign up, sign in
 `/privacy` and `/terms` exist in English and Hindi, are linked from the footer on every page and from the sign-up form, and appear in Ctrl+K search. The text describes what the app does today: it stores an email, a hashed password, saved settings and a session cookie; keeps preferences in browser storage; holds the IP only in memory for rate limiting; uses no analytics or ad cookies; fetches gold from Twelve Data on the server and Bitcoin directly from Binance in the visitor's browser.
 
 **You must do before launch**
-1. Edit `src/config/site.ts`: set the operator's legal name, a real contact email and the governing jurisdiction. Until you do, both pages show a visible "Draft" banner (it disappears on its own once nothing is in `[square brackets]`).
-2. Update `legalUpdated` in the same file whenever you change either text.
+1. Set `NEXT_PUBLIC_SITE_OPERATOR`, `NEXT_PUBLIC_SITE_CONTACT_EMAIL` and `NEXT_PUBLIC_SITE_JURISDICTION` (see section 3) **before building**: the operator's legal name, a real contact email and the governing jurisdiction. No code edit is needed. Until all three are set, both pages show a visible "Draft" banner (it disappears on its own once they are real values), and the boot log lists what is missing (section 18).
+2. Update `legalUpdated` in `src/config/site.ts` whenever you change either text.
 3. Have a lawyer review both pages, plus the Risk page. They are a plain-language starting point and are **not legal advice**. The liability limit, the "legal basis" wording and the governing-law clause in particular are generic.
 4. Have a native Hindi speaker review the Hindi versions.
 
@@ -301,3 +304,18 @@ Email-and-password accounts are built in (no external service). Sign up, sign in
 - **Dependencies:** `npm audit` is covered in section 10, item 6.
 
 **Container files (untested).** `Dockerfile`, `docker-compose.yml` and `.dockerignore` are included: a multi-stage build on Node 24, running as a non-root user, a `/app/data` volume for the database, a health check on `/api/auth/me`, bound to `127.0.0.1:3000` in the compose file. **They have never been built or run.** Before relying on them: build the image (`docker build --build-arg APP_URL=https://your.domain -t aurum .`), run it with a named volume and your `.env`, confirm the health check turns healthy and the tracker line appears, restart it and confirm the database survived. Run exactly one container.
+
+## 18. Launch tooling: readiness report, health endpoint, deploy files
+
+**Readiness report at boot.** Every time the server starts it prints a short `[preflight]` block listing what is still unconfigured for production: `APP_URL` (missing, or not https), email (`SMTP_URL` + `MAIL_FROM`), the gold key, `DATABASE_FILE` (still inside the app folder), the three site-detail variables, an invalid `GOLD_DAILY_BUDGET`, and a Node version below 22.13. A clean setup prints `configuration looks ready`. In development it is silent apart from the Node version. It only reports; it never blocks startup. Logic and tests: `src/server/preflight.ts`.
+
+**Health endpoint.** `GET /api/health` returns `{status, database, tracker, email}`. It answers **200** while the database responds (status `ok`, or `degraded` if the tracker's last pass was partial or is overdue by three intervals) and **503** if the database does not. It exposes no secrets, user data or configuration values and is never cached. The Docker health check uses it, and `npm run smoke` checks it. Point an uptime monitor at it.
+
+**Files in `deploy/`** (all untested on a real server; read and adapt before use):
+- `Caddyfile`: reverse proxy with automatic HTTPS (the setup the app's origin check and rate limits assume).
+- `aurum-desk.service`: systemd unit for the app, with basic sandboxing and a separate environment file.
+- `aurum-backup.service` and `aurum-backup.timer`: daily database backup (section 7).
+
+**Dependency updates.** `.github/dependabot.yml` opens weekly pull requests for npm updates (minor and patch grouped) and monthly ones for GitHub Actions. The CI workflow runs on each, so nothing merges unchecked.
+
+**CI.** `.github/workflows/ci.yml` runs typecheck, lint, the unit tests, the production build and a production-dependency audit on every push and pull request. The build no longer downloads fonts from Google (the `geist` package ships them), because that download is what failed the first CI run.

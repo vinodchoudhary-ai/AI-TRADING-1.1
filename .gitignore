@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local sqlite
 /data/
+
+# local backups (contain account data)
+/backups/

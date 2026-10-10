@@ -5,6 +5,7 @@ import { addSignal, resolveAll, toStored } from "@/lib/history";
 import type { Candle } from "@/lib/indicators";
 import { listSignals, saveSignals } from "./db";
 import { fetchGold } from "./gold";
+import { markPassDone, markTrackerStarted } from "./status";
 
 // Few markets/timeframes keep us inside Twelve Data's free quota; gold reuses the page's cached responses.
 const TARGETS = [
@@ -51,6 +52,7 @@ export async function runOnce(): Promise<void> {
       console.warn(`[job] ${symbol} ${tf} skipped:`, e instanceof Error ? e.message : e);
     }
   }
+  markPassDone({ ok, total: TARGETS.length, added, settled });
   console.log(`[job] pass done: ${ok}/${TARGETS.length} targets, ${added} new signal(s), ${settled} settled`);
 }
 
@@ -59,6 +61,7 @@ const g = globalThis as unknown as { aurumJob?: NodeJS.Timeout };
 export function startJob(): void {
   if (g.aurumJob) return; // survive dev hot-reloads without duplicating timers
   const minutes = Math.max(1, Number(process.env.JOB_INTERVAL_MIN ?? 10));
+  markTrackerStarted(minutes);
   void runOnce();
   g.aurumJob = setInterval(() => void runOnce(), minutes * 60_000);
   console.log(`[job] signal tracker started, every ${minutes} min`);

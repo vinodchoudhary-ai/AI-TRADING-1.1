@@ -1,0 +1,12 @@
+# Daily backup at 03:30. Install both aurum-backup files, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now aurum-backup.timer
+# Backups contain emails and password hashes: encrypt them and copy them OFF this machine.
+[Unit]
+Description=Daily Aurum Desk database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

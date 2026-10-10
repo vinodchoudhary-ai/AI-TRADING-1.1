@@ -1,0 +1,10 @@
+# One database backup. Run by aurum-backup.timer. Adjust the user and paths to match aurum-desk.service.
+[Unit]
+Description=Aurum Desk database backup
+
+[Service]
+Type=oneshot
+User=aurum
+WorkingDirectory=/opt/aurum-desk
+EnvironmentFile=/etc/aurum-desk/env
+ExecStart=/usr/bin/node scripts/backup.mjs /var/backups/aurum --keep 14

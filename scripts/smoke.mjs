@@ -92,6 +92,14 @@ await check("/api/auth/me answers signed-out and is not cacheable", async () => 
   eq((await res.json()).user, null, "user");
   has(res.headers.get("cache-control") ?? "", "no-store", "Cache-Control");
 });
+await check("/api/health reports the database and the tracker", async () => {
+  const res = await get("/api/health");
+  eq(res.status, 200, "status");
+  const body = await res.json();
+  eq(body.database, true, "database");
+  if (!["ok", "degraded"].includes(body.status)) throw new Error(`unexpected status ${body.status}`);
+  has(res.headers.get("cache-control") ?? "", "no-store", "Cache-Control");
+});
 await check("/api/signals returns a list", async () => {
   const res = await get("/api/signals");
   eq(res.status, 200, "status");

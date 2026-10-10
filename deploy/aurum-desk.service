@@ -1,0 +1,28 @@
+# systemd unit. Install: copy to /etc/systemd/system/, adjust User/paths, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now aurum-desk
+# Run exactly ONE copy (the app keeps a SQLite file and runs its tracker in-process).
+[Unit]
+Description=Aurum Desk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=aurum
+Group=aurum
+WorkingDirectory=/opt/aurum-desk
+# Put production settings here (see .env.example). Mode 600, owned by root or the service user.
+EnvironmentFile=/etc/aurum-desk/env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+
+# Basic sandboxing. The app only needs to write its data directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/aurum
+
+[Install]
+WantedBy=multi-user.target
