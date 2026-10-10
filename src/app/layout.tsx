@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// Self-hosted: the font files ship inside the `geist` package, so the build and the running site never
+// contact Google (next/font/google downloads them during the build, which breaks offline or locked-down builds).
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistSans = GeistSans; // exposes the --font-geist-sans CSS variable
+const geistMono = GeistMono; // exposes the --font-geist-mono CSS variable
 
 const appUrl = process.env.APP_URL?.trim();
 
