@@ -15,7 +15,7 @@
     "geist": "^1.7.2",
     "lightweight-charts": "^5.2.1",
     "next": "16.4.0",
-    "nodemailer": "^10.0.16",
+    "nodemailer": "^10.1.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -29,9 +29,9 @@
     "axe-core": "^4.14.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
-    "smtp-server": "^3.19.18",
+    "smtp-server": "^3.19.22",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.4"
   }
 }
